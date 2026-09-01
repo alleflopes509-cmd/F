@@ -1,0 +1,45 @@
+name: PC Virtual Windows - Totalmente Corrigido
+
+on: 
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    # 1. Cria um usuário totalmente novo e define a senha segura exigida pelo Windows
+    - name: Criar Usuario Novo
+      run: |
+        $Password = ConvertTo-SecureString "RdpSeguro123!" -AsPlainText -Force
+        New-LocalUser -Name "pcvirtual" -Password $Password -Description "Usuario do PC Virtual"
+        Add-LocalGroupMember -Group "Administradores" -Member "pcvirtual"
+        Add-LocalGroupMember -Group "Usuários do área de trabalho remota" -Member "pcvirtual"
+
+    # 2. Ativa o RDP e abre as portas no Firewall do Windows
+    - name: Liberar Conexao RDP
+      run: |
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 0
+        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+        Set-NetFirewallRule -DisplayGroup "Remote Desktop" -Profile Domain,Private,Public -Enabled True
+
+    # 3. Conecta à sua rede do Tailscale usando a chave que você salvou no GitHub
+    - name: Conectar ao Tailscale
+      uses: tailscale/github-action@v2
+      with:
+        authkey: ${{ secrets.TAILSCALE_AUTH_KEY }}
+
+    # 4. Mantém o computador ligado
+    - name: Segurar PC Ativo
+      run: |
+        Write-Host "================================================================"
+        Write-Host "PC LIGADO COM SUCESSO!"
+        Write-Host "Usuário de login: .\pcvirtual"
+        Write-Host "Senha para usar: RdpSeguro123!"
+        Write-Host "================================================================"
+        
+        $timeout = 340
+        for ($i = 0; $i -lt $timeout; $i++) {
+            Start-Sleep -Seconds 60
+        }
